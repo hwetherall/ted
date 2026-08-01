@@ -116,7 +116,7 @@ create table punters (
 );
 ```
 
-**Why `nickname` is stored in plaintext:** the quiz needs to generate decoy options drawn from *other* punters' real nicknames, which means the server must be able to read them. A hash cannot do that. The plaintext column is protected by RLS restricted to the service role, and is never returned by any punter-scoped query. `nickname_hash` exists separately because after the first successful quiz the nickname becomes a typed password on return visits, and that comparison should run against a hash. Keep both columns. Do not collapse them.
+**Why `nickname` is stored in plaintext:** the quiz prefers decoy options drawn from *other* punters' real nicknames, which means the server must be able to read them. A fixed bench of ten fake nicknames fills empty slots while the roster is incomplete, and each fake is replaced as enough real decoys become available. A hash cannot support that transition. The plaintext column is protected by RLS restricted to the service role, and is never returned by any punter-scoped query. `nickname_hash` exists separately because after the first successful quiz the nickname becomes a typed password on return visits, and that comparison should run against a hash. Keep both columns. Do not collapse them.
 
 ```sql
 -- ============================================================
@@ -291,7 +291,7 @@ This is the distinctive part of the product. Build it exactly as specified.
 
 1. One link is shared in the group chat: `/login`. No per-person tokens.
 2. The punter picks their own name from a list of `display_name` values. Disambiguate collisions with a surname initial, because there will be more than one Dave.
-3. Server returns **three nickname options**: the punter's real nickname plus two decoys **drawn from other punters' actual assigned nicknames**. Not random words, not generated filler. This is what makes the quiz "do you know this crew" rather than a coin flip.
+3. Server returns **three nickname options**: the punter's real nickname plus two decoys. Prefer other punters' actual assigned nicknames, then fill any missing slots from the fixed ten-name bench. As the roster gains real nicknames, real decoys replace bench entries automatically.
 4. Correct answer → set `claimed_at`, write `nickname_hash`, sign a session JWT, set the cookie, redirect to `/trip`.
 5. Wrong answer → log the attempt, apply lockout, show a flat failure screen with no hint about which option was right and no indication of how close they were.
 

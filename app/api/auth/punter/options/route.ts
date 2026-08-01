@@ -18,9 +18,5 @@ export async function POST(request: Request) {
   if (!target?.nickname) return NextResponse.json({ error: "That name is not ready yet. Message a groomsman." }, { status: 404 });
   if (target.claimed_at) return NextResponse.json({ returning: true }, { status: 409 });
   const { data: others } = await supabase.from("punters").select("nickname").neq("id", parsed.data.punterId).not("nickname", "is", null);
-  try {
-    return NextResponse.json({ options: chooseNicknameOptions(target.nickname, (others || []).map((item) => item.nickname).filter(Boolean)) });
-  } catch {
-    return NextResponse.json({ error: "The nickname board needs at least three completed names." }, { status: 503 });
-  }
+  return NextResponse.json({ options: chooseNicknameOptions(target.nickname, (others || []).map((item) => item.nickname).filter(Boolean)) });
 }

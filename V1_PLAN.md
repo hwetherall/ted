@@ -168,7 +168,7 @@ Deliverables:
 
 - Implement the shared name picker using only `id` and disambiguated `display_name`.
 - Set the random `device_id` in an httpOnly cookie on the first login visit.
-- Implement nickname option generation with exactly one real nickname and two distinct real nicknames belonging to other punters. Randomize order server-side.
+- Implement nickname option generation with exactly one real nickname and two distinct decoys. Prefer real nicknames belonging to other punters, then fill missing slots from a fixed ten-name bench until enough real nicknames exist. Randomize order server-side.
 - Normalize typed nicknames by trimming, lowercasing, and collapsing internal whitespace.
 - On a correct first claim, hash the normalized nickname, set `claimed_at`, log success, mint the 90-day JWT cookie, and redirect to `/trip`.
 - Implement returning login against `nickname_hash`.
