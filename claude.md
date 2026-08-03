@@ -11,7 +11,7 @@ A private website to organise a stag do (bachelor party) in Australia for **Ted*
 **People:**
 - ~20 attendees ("punters"). 18 are Australia-based. 2 are international: Harry (Denver, USA) and Sam (Scotland).
 - 5 groomsmen act as admins. Harry is one of them and is the money person.
-- Ted himself has a deliberately crippled, write-only view. He must never see the itinerary, the vault, the costs, or the crew list.
+- Ted has a deliberately isolated team-sheet view. He can see and edit only the people added through his bearer link, and must never see the itinerary, vault, costs, crew list, or organiser processing state.
 
 **The organiser is Harry.** He holds an Australian bank account despite living in the US.
 
@@ -26,7 +26,7 @@ These are decisions already made after deliberation. Do not "improve" them, do n
 1. **No Stripe, no card processing, no payment gateway in V1.** See section 8. The site is a ledger, not a merchant.
 2. **File uploads never pass through a Next.js route handler body.** Direct browser to Supabase via signed upload URL. See section 9.
 3. **Punter authentication is a custom nickname quiz, not Supabase Auth.** See section 7. Do not replace it with magic links or OAuth.
-4. **Ted has no login and no navigation.** One route, one form. See section 11.
+4. **Ted has no login and no navigation.** One route contains the add form and his editable team sheet. See section 11.
 5. **All money is integer cents, AUD.** Never floats. Never a `numeric` column you then read into a JS number.
 6. **All timestamps are `timestamptz` stored in UTC.** Display logic handles timezones. See section 10.
 7. **The service role key never reaches the browser.** Server-side only, always.
@@ -55,8 +55,8 @@ Do not add a state management library. Do not add an ORM. Use the Supabase clien
 |---|---|---|---|
 | Route prefix | `/admin` | `/trip` | `/ted/[token]` |
 | Auth | Supabase Auth magic link, email allow-list of 5 | Nickname quiz, custom JWT cookie | None. Unguessable URL. |
-| Can read | Everything | Own record, published itinerary, approved vault, crew names | Nothing |
-| Can write | Everything | Own RSVP, vault uploads | One staging form |
+| Can read | Everything | Own record, published itinerary, approved vault, crew names | Entries on his team sheet only |
+| Can write | Everything | Own RSVP, vault uploads | Add and edit his team-sheet entries |
 
 Groomsmen get **flat access**. All five see and do the same things. Do not build a role or permission system. The only differentiation is a `is_treasurer` boolean on Harry's record, used purely to label the ledger view with who reconciles payments.
 
@@ -82,8 +82,6 @@ create table groomsmen (
 -- PUNTERS (the core roster object: identity + RSVP + profile)
 -- ============================================================
 create type rsvp_status as enum ('unknown', 'yes', 'no', 'maybe');
-create type invite_priority as enum ('must', 'nice');
-
 create table punters (
   id                  uuid primary key default gen_random_uuid(),
 
@@ -109,7 +107,9 @@ create table punters (
 
   -- money
   payment_reference   text not null unique,  -- e.g. "TED-MARSH-4417"
-  invite_priority     invite_priority not null default 'nice',
+
+  -- private organiser context, never granted or projected to punters
+  organiser_note      text,
 
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
@@ -218,14 +218,13 @@ create table ted_submissions (
   email            text,
   phone            text,
   nickname         text not null,
-  invite_priority  invite_priority not null default 'nice',
   note             text,
   status           submission_status not null default 'new',
   submitted_at     timestamptz not null default now()
 );
 ```
 
-Ted's submissions never write directly into `punters`. A groomsman reviews, dedupes, sanity-checks the nickname, and imports.
+Every person Ted adds is invited. Team-sheet entries never write directly into `punters`. A groomsman resolves the rare duplicate or ambiguous identity, corrects details where needed, and places each entry on the live roster. This is processing, not approval. When an entry is placed, copy its `note` into the punter's private `organiser_note`.
 
 ```sql
 -- ============================================================
@@ -274,7 +273,7 @@ Supabase RLS can validate a self-signed JWT provided it is signed with the same 
 | `costs` | none. Punters see only the derived per-head figure via the summary view. | full |
 | `itinerary_items` | select where `is_published = true` | full |
 | `vault_items_public` (view) | select where `moderation_status = 'approved'`, with `submitted_by` omitted and attribution resolved to a display name or "Anonymous". Insert via server route only. | full on base table |
-| `ted_submissions` | none | full |
+| `ted_submissions` | none | full. Ted access is through token-checked server operations only. |
 | `auth_attempts`, `lockouts` | none | select, delete |
 
 A punter must never be able to read another punter's `payment_reference`, balance, `nickname`, phone, or email.
@@ -397,10 +396,13 @@ Route: `/ted/[token]`. Single long random token in an env var, sent to Ted once.
 **Rules:**
 - No login, no nav bar, no footer links, no shared layout with the rest of the site.
 - The page must not hint that anything else exists. No logo linking home, no "back to site."
-- One form: full name, email, phone, **nickname**, must-invite versus nice-to-have, optional note.
-- Writes to `ted_submissions`, never to `punters`.
+- The primary add form asks for full name and **nickname** (required), plus optional mobile, email, and note.
+- If Ted adds someone, they are invited. Never show priority, capacity, approval, RSVP, logistics, or organiser-processing state.
+- Show the current team sheet below the form. Ted can edit full name, nickname, mobile, email, and note, but cannot delete an entry.
+- Token-checked server operations return and update only team-sheet fields. Writes go to `ted_submissions`, never directly to `punters`.
 - **The link is reusable and does not expire.** Ted will trickle in more names over the following weeks. Do not build single-use tokens.
-- After submit, show a confirmation and reset the form for another entry. Show a running count of how many he has added, and nothing else.
+- After a successful addition, reset the form, update the count, and show the brief `LOCKED IN` stamp with "Locked in. Who's next?" Disable the action while saving and respect reduced motion.
+- Treat the URL as a bearer credential. Use no-store responses, `noindex`, no third-party resources, and no referrer leakage.
 - Add `noindex` and a `robots.txt` disallow across the whole site.
 
 ---
@@ -421,7 +423,7 @@ Route: `/ted/[token]`. Single long random token in an env var, sent to Ted once.
 /trip/vault                upload + browse approved items
 /trip/crew                 who is coming (names only, no financials)
 
-/ted/[token]               Ted's intake form. No nav.
+/ted/[token]               Ted's add form and editable team sheet. No nav.
 
 /admin                     dashboard: headcount, total collected, outstanding, pending vault items
 /admin/roster              punter CRUD, nicknames, RSVP overrides
@@ -430,7 +432,7 @@ Route: `/ted/[token]`. Single long random token in an env var, sent to Ted once.
 /admin/costs               cost items + live per-head calculation
 /admin/itinerary           itinerary editor with publish toggle
 /admin/vault               moderation queue
-/admin/intake              review and import Ted's submissions
+/admin/intake              process Ted's new team-sheet entries onto the roster
 /admin/security            failed attempts, active lockouts, one-click unlock
 
 /api/auth/punter/options   POST: returns 3 nickname options for a given punter
@@ -511,7 +513,7 @@ Ship in this order. Do not start a phase before the previous one runs end to end
 Schema, RLS policies, generated types, Supabase Auth for the 5 groomsmen, `/admin` shell, punter CRUD at `/admin/roster`. Seed with fake data.
 
 **Phase 2: Ted's intake**
-`/ted/[token]`, `ted_submissions`, `/admin/intake` review and import. This unblocks Ted, who is the long pole, since nothing else can be populated until he supplies names and nicknames.
+`/ted/[token]`, `ted_submissions`, and `/admin/intake` roster processing. Stage 2 expands this to Ted's visible, editable team sheet and removes invitation ranking. This unblocks Ted, who is the long pole, since nothing else can be populated until he supplies names and nicknames.
 
 **Phase 3: punter auth**
 The nickname quiz, device lockouts, `/admin/security`. Nothing punter-facing works until this does.

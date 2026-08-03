@@ -1,8 +1,8 @@
 # Ted Stage 2 plan
 
-Status: product discovery
+Status: team-selection implementation complete in code. Database rollout still requires the manual preparation in section 3.
 
-This is the living plan for the next product iteration, referred to here as Stage 2. It is distinct from the numbered delivery phases in `V1_PLAN.md`. Confirmed decisions are recorded as product rules. Open questions remain explicit until Harry answers them. No Stage 2 implementation should begin until the relevant rules, authorization boundaries, migrations, and acceptance criteria are agreed.
+This is the living plan for the next product iteration, referred to here as Stage 2. It is distinct from the numbered delivery phases in `V1_PLAN.md`. Confirmed decisions are recorded as product rules. The team-selection rules, authorization boundary, migration, and acceptance criteria are implemented. Open questions for later Stage 2 modules remain explicit until Harry answers them.
 
 ## 1. Product direction
 

@@ -6,20 +6,20 @@ The app has three deliberately different doors:
 
 - Groomsmen use allow-listed Supabase Auth magic links under `/admin`.
 - Punters use Ted's nickname challenge under `/login` and receive a custom cookie JWT.
-- Ted receives one reusable, isolated `/ted/[token]` intake link and cannot read anything back.
+- Ted receives one reusable, isolated `/ted/[token]` team-sheet link. He can read and edit only the people added through that link.
 
 Money moves through Harry's Australian bank account. The app calculates, records, and reconciles payments, but never processes them.
 
 ## What is built
 
-- Ted intake, groomsman review, and transactional roster import
+- Ted's editable team sheet and transactional organiser roster processing
 - Punter nickname quiz, returning login, device lockouts, audit trail, and admin override
 - RSVP, travel details, crew honour board, trip home, and timezone-aware itinerary
 - Integer-cent cost engine, punter payment instructions, manual ledger, and staged bank CSV reconciliation
 - Direct-to-Supabase vault uploads, photo metadata removal, progress, moderation, private signed delivery, quotas, and stale-upload cleanup
 - Explicit RLS and grants for every public table, plus privacy-focused views and tests
 
-See [V1_PLAN.md](V1_PLAN.md) for delivery scope and acceptance criteria.
+See [V1_PLAN.md](V1_PLAN.md) for the original delivery scope and [STAGE_2_PLAN.md](STAGE_2_PLAN.md) for the current team-selection rules.
 
 ## Local setup
 
@@ -56,6 +56,8 @@ npm run db:types -- > types/database.generated.ts
 
 `supabase db reset` is destructive to the local database. It applies `supabase/migrations/202607310001_initial.sql` and then loads `supabase/seed.sql` with fake development data.
 
+Stage 2 also applies `supabase/migrations/202608020001_stage_2_team_sheet.sql`. It removes invitation priority, adds the private `punters.organiser_note` field, and updates roster processing. The migration is compatible with the manual `organiser_note` preparation in `STAGE_2_PLAN.md`.
+
 ### Hosted Supabase
 
 Link the repository to the intended development or staging project, preview the migration, and then apply it:
@@ -70,6 +72,8 @@ supabase gen types typescript --linked > types/database.generated.ts
 ```
 
 Do not load `supabase/seed.sql` into production. If the linked project contains valuable data, inspect the dry run and take a backup before applying migrations.
+
+Before deploying Stage 2, Harry must run the manual `organiser_note` SQL and privilege check in `STAGE_2_PLAN.md` through the Supabase SQL editor. Do not add that column to the `punter` role, `punter_self`, `punters_public`, or another punter-readable relation. After that check passes, preview and apply the committed Stage 2 migration, then regenerate `types/database.generated.ts` from the linked project.
 
 Configure these Supabase Auth redirect URLs before testing groomsman magic links:
 
@@ -100,7 +104,7 @@ The current defaults are Melbourne and 10 April 2027. Confirm the city and dates
 
 `GROOMSMEN_EMAILS` is ordered. The first address is labelled as treasurer during first login, so put Harry first.
 
-Generated secrets must remain independent. Use separate values for `IP_HASH_SALT`, `TED_INTAKE_TOKEN`, and `CRON_SECRET`. The intake token is embedded in `/ted/[token]`, so generate it from URL-compatible characters, for example with `openssl rand -hex 32`.
+Generated secrets must remain independent. Use separate values for `IP_HASH_SALT`, `TED_INTAKE_TOKEN`, and `CRON_SECRET`. The team-sheet token is embedded in `/ted/[token]`, so generate it from URL-compatible characters, for example with `openssl rand -hex 32`. Anyone holding it can see and edit Ted's team sheet, so share it only with Ted.
 
 Only punters with RSVP status `yes` owe the current per-head amount. Other statuses show zero owed. Change this rule in the SQL views only after the groomsmen agree.
 
@@ -113,6 +117,8 @@ Bank CSVs must contain one date column, one amount column, and one description o
 - Never put `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `IP_HASH_SALT`, `TED_INTAKE_TOKEN`, or `CRON_SECRET` in a public environment variable.
 - Treat `DEEPSEEK_API_KEY` as a server-only secret even though it is not used yet. Never rename it to `NEXT_PUBLIC_DEEPSEEK_API_KEY`.
 - Keep the `vault` bucket private. Media is served through short-lived signed URLs.
+- Keep `punters.organiser_note` out of punter column grants and every punter-facing view.
+- Keep `/ted/[token]` dynamic and no-store, with no third-party resources or navigation that could expose the bearer token.
 - Do not point Vercel previews at production Supabase.
 - Run the RLS matrix against the real project before uploading private media.
 - The source copy check rejects em dash characters, as required by the project brief.

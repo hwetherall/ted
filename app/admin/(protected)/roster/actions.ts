@@ -21,7 +21,7 @@ export async function createPunterAction(formData: FormData) {
       nickname: text(formData, "nickname"),
       email: nullableText(formData, "email"),
       phone: nullableText(formData, "phone"),
-      invite_priority: text(formData, "invite_priority") === "must" ? "must" : "nice",
+      organiser_note: nullableText(formData, "organiser_note"),
       payment_reference: surnameReference(fullName),
     });
     if (!error) break;
@@ -39,7 +39,7 @@ export async function updatePunterAction(formData: FormData) {
     email: nullableText(formData, "email"),
     phone: nullableText(formData, "phone"),
     rsvp_status: text(formData, "rsvp_status"),
-    invite_priority: text(formData, "invite_priority"),
+    organiser_note: nullableText(formData, "organiser_note"),
   }).eq("id", text(formData, "id"));
   revalidatePath("/admin/roster");
 }

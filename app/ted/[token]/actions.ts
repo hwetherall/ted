@@ -1,38 +1,75 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { notFound } from "next/navigation";
 import { z } from "zod";
-import { validTedToken } from "@/lib/auth/ted";
-import { createServiceSupabase } from "@/lib/supabase/service";
 import { text, nullableText } from "@/lib/forms";
+import { addTedTeamSheetEntry, updateTedTeamSheetEntry } from "@/lib/ted/team-sheet";
 
 const submission = z.object({
   full_name: z.string().min(2).max(120),
-  email: z.union([z.email(), z.literal("")]),
+  email: z.union([z.email().max(320), z.literal("")]),
   phone: z.string().max(40),
   nickname: z.string().min(1).max(80),
-  invite_priority: z.enum(["must", "nice"]),
   note: z.string().max(1000),
 });
 
-export async function submitTedNameAction(formData: FormData) {
-  const token = text(formData, "token");
-  if (!validTedToken(token)) redirect("/not-found");
+export type TeamSheetActionState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  savedAt?: number;
+};
+
+function entryFrom(formData: FormData) {
   const parsed = submission.safeParse({
     full_name: text(formData, "full_name"),
     email: text(formData, "email"),
     phone: text(formData, "phone"),
     nickname: text(formData, "nickname"),
-    invite_priority: text(formData, "invite_priority"),
     note: text(formData, "note"),
   });
-  if (!parsed.success) redirect(`/ted/${token}?error=check-details`);
-  const { error } = await createServiceSupabase().from("ted_submissions").insert({
+
+  if (!parsed.success) return null;
+
+  return {
     ...parsed.data,
     email: nullableText(formData, "email"),
     phone: nullableText(formData, "phone"),
     note: nullableText(formData, "note"),
-  });
-  if (error) redirect(`/ted/${token}?error=save-failed`);
-  redirect(`/ted/${token}?added=1`);
+  };
+}
+
+export async function submitTedNameAction(
+  _previousState: TeamSheetActionState,
+  formData: FormData,
+): Promise<TeamSheetActionState> {
+  const token = text(formData, "token");
+  const entry = entryFrom(formData);
+  if (!entry) return { status: "error", message: "Check the details and try again." };
+
+  const result = await addTedTeamSheetEntry(token, entry);
+  if (!result.authorized) notFound();
+  if (result.error) return { status: "error", message: "That person was not saved. Try again." };
+
+  revalidatePath(`/ted/${token}`);
+  return { status: "success", message: "Locked in. Who's next?", savedAt: Date.now() };
+}
+
+export async function updateTedNameAction(
+  _previousState: TeamSheetActionState,
+  formData: FormData,
+): Promise<TeamSheetActionState> {
+  const token = text(formData, "token");
+  const id = text(formData, "id");
+  const entry = entryFrom(formData);
+  if (!z.uuid().safeParse(id).success || !entry) {
+    return { status: "error", message: "Check the details and try again." };
+  }
+
+  const result = await updateTedTeamSheetEntry(token, id, entry);
+  if (!result.authorized) notFound();
+  if (result.error) return { status: "error", message: "Those changes were not saved. Try again." };
+
+  revalidatePath(`/ted/${token}`);
+  return { status: "success", message: "Details updated.", savedAt: Date.now() };
 }

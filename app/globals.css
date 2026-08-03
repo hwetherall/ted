@@ -252,6 +252,26 @@ a {
   animation: board-reveal 380ms both;
 }
 
+@keyframes locked-in-stamp {
+  from { opacity: 0; transform: rotate(-4deg) scale(1.2); }
+  to { opacity: 1; transform: rotate(-4deg) scale(1); }
+}
+
+.locked-in-stamp {
+  display: inline-flex;
+  border: 2px solid currentColor;
+  border-radius: 0.25rem;
+  padding: 0.3rem 0.55rem;
+  color: var(--gold-light);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transform: rotate(-4deg);
+  animation: locked-in-stamp 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

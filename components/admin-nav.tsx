@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 const links = [
   ["/admin", "Scoreboard"],
   ["/admin/roster", "Roster"],
-  ["/admin/intake", "Ted's list"],
+  ["/admin/intake", "Team sheet"],
   ["/admin/ledger", "Ledger"],
   ["/admin/costs", "Costs"],
   ["/admin/itinerary", "Fixtures"],

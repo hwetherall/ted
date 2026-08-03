@@ -1,30 +1,64 @@
 import { Badge, EmptyState, PageHeader } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth/admin";
-import { discardSubmissionAction, importSubmissionAction } from "./actions";
+import {
+  importSubmissionAction,
+  removeMistakenEntryAction,
+  updateTeamSheetEntryAction,
+} from "./actions";
 
 export default async function IntakePage() {
   const { supabase } = await requireAdmin();
-  const { data: submissions } = await supabase.from("ted_submissions").select("*").eq("status", "new").order("submitted_at");
+  const { data: entries } = await supabase
+    .from("ted_submissions")
+    .select("id,full_name,nickname,email,phone,note,submitted_at")
+    .eq("status", "new")
+    .order("submitted_at");
+
   return (
     <div className="grid gap-8">
-      <PageHeader eyebrow="Ted's clipboard" title="Intake" intro="Review every name before it reaches the roster. Import is transactional, so a double click cannot make two punters." />
-      {submissions?.length ? <div className="grid gap-4">{submissions.map((item) => (
-        <article key={item.id} className="surface p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><h2 className="display text-2xl">{item.full_name}</h2><p className="mono mt-1 text-sm text-[var(--gold-light)]">{item.nickname}</p></div>
-            <Badge tone={item.invite_priority === "must" ? "gold" : "neutral"}>{item.invite_priority === "must" ? "Must invite" : "Nice to have"}</Badge>
-          </div>
-          <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-            <div><dt className="text-[var(--chalk-muted)]">Email</dt><dd>{item.email || "Not supplied"}</dd></div>
-            <div><dt className="text-[var(--chalk-muted)]">Phone</dt><dd>{item.phone || "Not supplied"}</dd></div>
-            {item.note ? <div className="sm:col-span-2"><dt className="text-[var(--chalk-muted)]">Ted’s note</dt><dd className="mt-1">{item.note}</dd></div> : null}
-          </dl>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <form action={importSubmissionAction}><input type="hidden" name="id" value={item.id} /><button className="button button-primary">Import to roster</button></form>
-            <form action={discardSubmissionAction}><input type="hidden" name="id" value={item.id} /><button className="button button-danger">Discard</button></form>
-          </div>
-        </article>
-      ))}</div> : <EmptyState title="Ted's list is clear.">New names will appear here as he adds them.</EmptyState>}
+      <PageHeader
+        eyebrow="Ted's team sheet"
+        title="Place the new picks"
+        intro="Everyone here is invited. Tidy any details, resolve the rare duplicate, then place each person on the live roster."
+      />
+      {entries?.length ? (
+        <div className="grid gap-4">
+          {entries.map((entry) => (
+            <article key={entry.id} className="surface p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="display text-2xl">{entry.full_name}</h2>
+                  <p className="mono mt-1 text-sm text-[var(--gold-light)]">{entry.nickname}</p>
+                </div>
+                <Badge>Awaiting processing</Badge>
+              </div>
+
+              <form action={updateTeamSheetEntryAction} className="mt-6 grid gap-4 border-t border-white/10 pt-5 sm:grid-cols-2">
+                <input type="hidden" name="id" value={entry.id} />
+                <label className="label">Full name<input className="field" name="full_name" required maxLength={120} defaultValue={entry.full_name} /></label>
+                <label className="label">Nickname<input className="field" name="nickname" required maxLength={80} defaultValue={entry.nickname} /></label>
+                <label className="label">Mobile<input className="field" name="phone" type="tel" maxLength={40} defaultValue={entry.phone || ""} /></label>
+                <label className="label">Email<input className="field" name="email" type="email" maxLength={320} defaultValue={entry.email || ""} /></label>
+                <label className="label sm:col-span-2">Ted&apos;s note<textarea className="field min-h-24 resize-y" name="note" maxLength={1000} defaultValue={entry.note || ""} /></label>
+                <button className="button button-secondary justify-self-start">Save details</button>
+              </form>
+
+              <div className="mt-5 flex flex-wrap gap-3 border-t border-white/10 pt-5">
+                <form action={importSubmissionAction}>
+                  <input type="hidden" name="id" value={entry.id} />
+                  <button className="button button-primary">Place on live roster</button>
+                </form>
+                <form action={removeMistakenEntryAction}>
+                  <input type="hidden" name="id" value={entry.id} />
+                  <button className="button button-danger">Remove duplicate or mistake</button>
+                </form>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="The team sheet is up to date.">New picks will appear here when Ted adds them.</EmptyState>
+      )}
     </div>
   );
 }
