@@ -11,6 +11,7 @@ const teamSheetEntry = z.object({
   email: z.union([z.email().max(320), z.literal("")]),
   phone: z.string().max(40),
   note: z.string().max(1000),
+  party_role: z.enum(["guest", "groomsman"]),
 });
 
 export async function importSubmissionAction(formData: FormData) {
@@ -29,6 +30,7 @@ export async function updateTeamSheetEntryAction(formData: FormData) {
     email: text(formData, "email"),
     phone: text(formData, "phone"),
     note: text(formData, "note"),
+    party_role: text(formData, "party_role"),
   });
   if (!parsed.success) return;
 
@@ -38,6 +40,7 @@ export async function updateTeamSheetEntryAction(formData: FormData) {
     email: nullableText(formData, "email"),
     phone: nullableText(formData, "phone"),
     note: nullableText(formData, "note"),
+    party_role: parsed.data.party_role,
   }).eq("id", text(formData, "id")).eq("status", "new");
   if (error) throw new Error(error.message);
   revalidatePath("/admin/intake");

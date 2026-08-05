@@ -1,25 +1,35 @@
 export function normalizeHost(hostHeader: string | null | undefined): string {
   if (!hostHeader) return "";
-  const host = hostHeader.trim().toLowerCase();
-  if (host.startsWith("[")) {
-    const end = host.indexOf("]");
-    if (end !== -1) return host.slice(0, end + 1);
+  // x-forwarded-host can be a comma-separated list; use the first
+  const first = hostHeader.split(",")[0]?.trim().toLowerCase() ?? "";
+  if (first.startsWith("[")) {
+    const end = first.indexOf("]");
+    if (end !== -1) return first.slice(0, end + 1);
   }
-  return host.split(":")[0] ?? "";
+  return first.split(":")[0] ?? "";
+}
+
+export function requestHost(headers: {
+  get(name: string): string | null;
+}): string {
+  return normalizeHost(headers.get("x-forwarded-host") ?? headers.get("host"));
 }
 
 export function isLocalHost(host: string): boolean {
   return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
 }
 
-export function tedHost(): string | undefined {
-  const value = process.env.TED_HOST?.trim().toLowerCase();
+function readHostEnv(primary: string | undefined, publicFallback: string | undefined) {
+  const value = (primary ?? publicFallback)?.trim().toLowerCase();
   return value || undefined;
 }
 
+export function tedHost(): string | undefined {
+  return readHostEnv(process.env.TED_HOST, process.env.NEXT_PUBLIC_TED_HOST);
+}
+
 export function crewHost(): string | undefined {
-  const value = process.env.CREW_HOST?.trim().toLowerCase();
-  return value || undefined;
+  return readHostEnv(process.env.CREW_HOST, process.env.NEXT_PUBLIC_CREW_HOST);
 }
 
 export function hostIsolationEnabled(): boolean {

@@ -21,5 +21,5 @@ insert into public.itinerary_items (
   ('First whistle', 'Drop bags, grab a drink, pretend everyone arrived on time.', '2027-04-09 08:00:00+00', '2027-04-09 10:00:00+00', 'The clubhouse', 'Melbourne VIC', 'https://maps.google.com', null, true, 10),
   ('Saturday fixture', 'Details stay under wraps until the groomsmen lock it in.', '2027-04-10 01:00:00+00', '2027-04-10 06:00:00+00', 'TBC', null, null, 'Included', false, 20);
 
-insert into public.ted_submissions (full_name, email, nickname, note) values
-  ('Alex Morgan', 'alex@example.com', 'Morgs', 'Used to work together');
+insert into public.ted_submissions (full_name, email, nickname, note, party_role) values
+  ('Alex Morgan', 'alex@example.com', 'Morgs', 'Used to work together', 'guest');

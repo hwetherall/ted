@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(join(process.cwd(), "supabase/migrations/202607310001_initial.sql"), "utf8");
 const stageTwo = readFileSync(join(process.cwd(), "supabase/migrations/202608020001_stage_2_team_sheet.sql"), "utf8");
+const partyRole = readFileSync(join(process.cwd(), "supabase/migrations/202608050001_party_role.sql"), "utf8");
 const tedNotFound = readFileSync(join(process.cwd(), "app/ted/[token]/not-found.tsx"), "utf8");
 const tables = ["groomsmen", "punters", "payments", "costs", "itinerary_items", "vault_items", "ted_submissions", "auth_attempts", "lockouts", "bank_import_profiles", "bank_import_batches", "bank_import_rows"];
 
@@ -33,11 +34,26 @@ describe("schema security declarations", () => {
     expect(stageTwo).toContain("staged.nickname, staged.note, candidate");
   });
 
+  it("adds guest or groomsman party role and copies it on import", () => {
+    expect(partyRole).toContain("create type public.party_role as enum ('guest', 'groomsman');");
+    expect(partyRole).toContain("alter table public.ted_submissions\n  add column party_role public.party_role not null default 'guest';");
+    expect(partyRole).toContain("alter table public.punters\n  add column party_role public.party_role not null default 'guest';");
+    expect(partyRole).toContain("nickname, organiser_note, party_role, payment_reference");
+    expect(partyRole).toContain("staged.nickname, staged.note, staged.party_role, candidate");
+  });
+
   it("keeps organiser notes out of punter grants and views", () => {
     const selfView = stageTwo.split("create view public.punter_self")[1].split("revoke all on public.punter_self")[0];
     expect(selfView).not.toContain("organiser_note");
     expect(stageTwo).not.toMatch(/grant select \([^;]*organiser_note[^;]*\)\s*on public\.punters to punter/);
     expect(migration.split("create view public.punters_public")[1].split("create view public.punter_self")[0]).not.toContain("organiser_note");
+  });
+
+  it("keeps party role out of punter-facing views", () => {
+    const selfView = stageTwo.split("create view public.punter_self")[1].split("revoke all on public.punter_self")[0];
+    expect(selfView).not.toContain("party_role");
+    expect(partyRole).not.toMatch(/create view public\.punter_self[\s\S]*party_role/);
+    expect(partyRole).not.toMatch(/grant select \([^;]*party_role[^;]*\)\s*on public\.punters to punter/);
   });
 
   it("gives invalid Ted links a generic response with no application navigation", () => {

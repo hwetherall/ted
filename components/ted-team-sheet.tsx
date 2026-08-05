@@ -12,7 +12,7 @@ import {
   PHONE_COUNTRY_CODES,
   splitE164,
 } from "@/lib/phone";
-import type { TeamSheetEntry } from "@/lib/ted/team-sheet";
+import type { PartyRole, TeamSheetEntry } from "@/lib/ted/team-sheet";
 
 const initialState: TeamSheetActionState = { status: "idle", message: "" };
 
@@ -59,6 +59,33 @@ function MobileField({ defaultPhone }: { defaultPhone?: string | null }) {
   );
 }
 
+function PartyRoleField({ defaultValue = "guest", size = "base" }: {
+  defaultValue?: PartyRole;
+  size?: "base" | "compact";
+}) {
+  const labelClass = size === "base" ? "label text-base" : "label";
+
+  return (
+    <fieldset className="grid gap-3">
+      <legend className={labelClass}>Guest or groomsman?</legend>
+      <div className="choice-grid">
+        <label className="choice-option">
+          <input className="sr-only" type="radio" name="party_role" value="guest" required defaultChecked={defaultValue === "guest"} />
+          Guest
+        </label>
+        <label className="choice-option">
+          <input className="sr-only" type="radio" name="party_role" value="groomsman" required defaultChecked={defaultValue === "groomsman"} />
+          Groomsman
+        </label>
+      </div>
+    </fieldset>
+  );
+}
+
+function partyRoleLabel(role: PartyRole) {
+  return role === "groomsman" ? "Groomsman" : "Guest";
+}
+
 function AddPersonForm({ token }: { token: string }) {
   const [state, action] = useActionState(submitTedNameAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
@@ -92,8 +119,10 @@ function AddPersonForm({ token }: { token: string }) {
         <label className="label text-base">
           What do you call them?
           <input className="field text-base font-normal" name="nickname" required maxLength={80} autoComplete="off" placeholder="Nickname" />
-          <span className="text-xs font-normal">Use the name they would instantly recognise.</span>
+          <span className="text-xs font-normal">Use the name they would instantly recognise. Or a hilarious one. I don't care.</span>
         </label>
+
+        <PartyRoleField />
 
         <fieldset className="grid gap-3">
           <legend className="label text-base">How can we reach them?</legend>
@@ -110,11 +139,11 @@ function AddPersonForm({ token }: { token: string }) {
             className="field min-h-28 resize-y text-base font-normal"
             name="note"
             maxLength={1000}
-            placeholder="Lives overseas, hard to contact, usually goes by another surname..."
+            placeholder="Lives overseas, hard to contact, potential sex offender, etc."
           />
         </label>
 
-        <PendingButton idle="Add them to the team sheet" pending="Adding..." />
+        <PendingButton idle="Add them to the team sheet" pending="Adding..." /> 
       </form>
     </>
   );
@@ -133,6 +162,7 @@ function EditPersonForm({ token, entry }: { token: string; entry: TeamSheetEntry
         <MobileField defaultPhone={entry.phone} />
         <label className="label">Email<input className="field text-base font-normal" name="email" type="email" maxLength={320} defaultValue={entry.email || ""} /></label>
       </div>
+      <PartyRoleField defaultValue={entry.party_role} size="compact" />
       <label className="label">Anything worth knowing?<textarea className="field min-h-24 resize-y text-base font-normal" name="note" maxLength={1000} defaultValue={entry.note || ""} /></label>
       <div className="flex flex-wrap items-center gap-3">
         <PendingButton idle="Save changes" pending="Saving..." />
@@ -166,7 +196,16 @@ export function TedTeamSheet({ token, entries }: { token: string; entries: TeamS
               <details id={`entry-${entry.id}`} key={entry.id} className="surface-flat group p-4 sm:p-5">
                 <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="display break-words text-xl">{entry.full_name}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="display break-words text-xl">{entry.full_name}</h3>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${
+                        entry.party_role === "groomsman"
+                          ? "border-[var(--gold)]/30 bg-[var(--gold)]/10 text-[var(--gold-light)]"
+                          : "border-white/10 bg-white/5 text-[var(--chalk-muted)]"
+                      }`}>
+                        {partyRoleLabel(entry.party_role)}
+                      </span>
+                    </div>
                     <p className="mono mt-1 break-words text-sm text-[var(--gold-light)]">{entry.nickname}</p>
                     {entry.phone || entry.email ? (
                       <p className="mt-2 break-words text-xs leading-5 text-[var(--chalk-muted)]">

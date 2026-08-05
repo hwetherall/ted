@@ -15,6 +15,7 @@ export async function createPunterAction(formData: FormData) {
   const fullName = text(formData, "full_name");
   if (!fullName || !text(formData, "display_name") || !text(formData, "nickname")) return;
   for (let attempt = 0; attempt < 20; attempt += 1) {
+    const partyRole = text(formData, "party_role");
     const { error } = await supabase.from("punters").insert({
       full_name: fullName,
       display_name: text(formData, "display_name"),
@@ -22,6 +23,7 @@ export async function createPunterAction(formData: FormData) {
       email: nullableText(formData, "email"),
       phone: nullableText(formData, "phone"),
       organiser_note: nullableText(formData, "organiser_note"),
+      party_role: partyRole === "groomsman" ? "groomsman" : "guest",
       payment_reference: surnameReference(fullName),
     });
     if (!error) break;
@@ -32,6 +34,7 @@ export async function createPunterAction(formData: FormData) {
 
 export async function updatePunterAction(formData: FormData) {
   const { supabase } = await requireAdmin();
+  const partyRole = text(formData, "party_role");
   await supabase.from("punters").update({
     full_name: text(formData, "full_name"),
     display_name: text(formData, "display_name"),
@@ -40,6 +43,7 @@ export async function updatePunterAction(formData: FormData) {
     phone: nullableText(formData, "phone"),
     rsvp_status: text(formData, "rsvp_status"),
     organiser_note: nullableText(formData, "organiser_note"),
+    party_role: partyRole === "groomsman" ? "groomsman" : "guest",
   }).eq("id", text(formData, "id"));
   revalidatePath("/admin/roster");
 }

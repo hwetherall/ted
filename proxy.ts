@@ -6,7 +6,7 @@ import {
   isStaticOrInternalPath,
   isTedHost,
   isTedPath,
-  normalizeHost,
+  requestHost,
   tedTeamSheetPath,
 } from "@/lib/hosts";
 
@@ -27,8 +27,16 @@ function withTedHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-export function middleware(request: NextRequest) {
-  const host = normalizeHost(request.headers.get("host"));
+function rewriteToTeamSheet(request: NextRequest): NextResponse {
+  const teamSheetPath = tedTeamSheetPath();
+  if (!teamSheetPath) return notFound();
+  const url = request.nextUrl.clone();
+  url.pathname = teamSheetPath;
+  return withTedHeaders(NextResponse.rewrite(url));
+}
+
+export function proxy(request: NextRequest) {
+  const host = requestHost(request.headers);
   const { pathname } = request.nextUrl;
 
   if (!hostIsolationEnabled() || isLocalHost(host)) {
@@ -40,19 +48,20 @@ export function middleware(request: NextRequest) {
   }
 
   if (isTedHost(host)) {
-    if (pathname === "/") {
-      const teamSheetPath = tedTeamSheetPath();
-      if (!teamSheetPath) return notFound();
-      const url = request.nextUrl.clone();
-      url.pathname = teamSheetPath;
-      return withTedHeaders(NextResponse.rewrite(url));
-    }
-
     if (isTedPath(pathname)) {
       return withTedHeaders(NextResponse.next());
     }
 
-    return notFound();
+    // Ted should never see /login or crew routes. Send everything to the team sheet.
+    // Canonicalise odd paths (like /login) to / in the address bar.
+    if (pathname !== "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return withTedHeaders(NextResponse.redirect(url));
+    }
+
+    return rewriteToTeamSheet(request);
   }
 
   if (isCrewHost(host)) {

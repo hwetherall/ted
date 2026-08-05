@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { text, nullableText } from "@/lib/forms";
 import { toE164 } from "@/lib/phone";
-import { addTedTeamSheetEntry, updateTedTeamSheetEntry } from "@/lib/ted/team-sheet";
+import { addTedTeamSheetEntry, isPartyRole, updateTedTeamSheetEntry } from "@/lib/ted/team-sheet";
 
 const submission = z.object({
   full_name: z.string().min(2).max(120),
@@ -13,6 +13,7 @@ const submission = z.object({
   phone: z.string().max(20),
   nickname: z.string().min(1).max(80),
   note: z.string().max(1000),
+  party_role: z.enum(["guest", "groomsman"]),
 });
 
 export type TeamSheetActionState = {
@@ -23,6 +24,8 @@ export type TeamSheetActionState = {
 
 function entryFrom(formData: FormData) {
   const phone = toE164(text(formData, "country_code"), text(formData, "phone")) ?? "";
+  const partyRole = text(formData, "party_role");
+  if (!isPartyRole(partyRole)) return null;
 
   const parsed = submission.safeParse({
     full_name: text(formData, "full_name"),
@@ -30,6 +33,7 @@ function entryFrom(formData: FormData) {
     phone,
     nickname: text(formData, "nickname"),
     note: text(formData, "note"),
+    party_role: partyRole,
   });
 
   if (!parsed.success) return null;

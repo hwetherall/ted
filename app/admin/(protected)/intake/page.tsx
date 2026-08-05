@@ -10,7 +10,7 @@ export default async function IntakePage() {
   const { supabase } = await requireAdmin();
   const { data: entries } = await supabase
     .from("ted_submissions")
-    .select("id,full_name,nickname,email,phone,note,submitted_at")
+    .select("id,full_name,nickname,email,phone,note,party_role,submitted_at")
     .eq("status", "new")
     .order("submitted_at");
 
@@ -30,7 +30,12 @@ export default async function IntakePage() {
                   <h2 className="display text-2xl">{entry.full_name}</h2>
                   <p className="mono mt-1 text-sm text-[var(--gold-light)]">{entry.nickname}</p>
                 </div>
-                <Badge>Awaiting processing</Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={entry.party_role === "groomsman" ? "gold" : "neutral"}>
+                    {entry.party_role === "groomsman" ? "Groomsman" : "Guest"}
+                  </Badge>
+                  <Badge>Awaiting processing</Badge>
+                </div>
               </div>
 
               <form action={updateTeamSheetEntryAction} className="mt-6 grid gap-4 border-t border-white/10 pt-5 sm:grid-cols-2">
@@ -39,6 +44,7 @@ export default async function IntakePage() {
                 <label className="label">Nickname<input className="field" name="nickname" required maxLength={80} defaultValue={entry.nickname} /></label>
                 <label className="label">Mobile<input className="field" name="phone" type="tel" maxLength={40} defaultValue={entry.phone || ""} /></label>
                 <label className="label">Email<input className="field" name="email" type="email" maxLength={320} defaultValue={entry.email || ""} /></label>
+                <label className="label">Party role<select className="field" name="party_role" defaultValue={entry.party_role}><option value="guest">Guest</option><option value="groomsman">Groomsman</option></select></label>
                 <label className="label sm:col-span-2">Ted&apos;s note<textarea className="field min-h-24 resize-y" name="note" maxLength={1000} defaultValue={entry.note || ""} /></label>
                 <button className="button button-secondary justify-self-start">Save details</button>
               </form>

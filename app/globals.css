@@ -197,6 +197,43 @@ a {
   transform: none;
 }
 
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.choice-option {
+  display: grid;
+  place-items: center;
+  min-height: 3rem;
+  border: 1px solid rgba(242, 239, 230, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  color: var(--chalk-muted);
+  background: rgba(8, 16, 13, 0.58);
+  cursor: pointer;
+  font-weight: 700;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.choice-option:hover {
+  border-color: rgba(200, 169, 81, 0.45);
+  color: var(--chalk);
+}
+
+.choice-option:has(:focus-visible) {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 3px;
+}
+
+.choice-option:has(:checked) {
+  border-color: var(--gold);
+  color: var(--gold-light);
+  background: rgba(200, 169, 81, 0.12);
+  box-shadow: 0 0 0 3px rgba(200, 169, 81, 0.14);
+}
+
 .status-dot {
   display: inline-block;
   width: 0.5rem;

@@ -8,6 +8,7 @@ import {
   isTedHost,
   isTedPath,
   normalizeHost,
+  requestHost,
   tedHost,
   tedTeamSheetPath,
 } from "@/lib/hosts";
@@ -15,6 +16,8 @@ import {
 const original = {
   TED_HOST: process.env.TED_HOST,
   CREW_HOST: process.env.CREW_HOST,
+  NEXT_PUBLIC_TED_HOST: process.env.NEXT_PUBLIC_TED_HOST,
+  NEXT_PUBLIC_CREW_HOST: process.env.NEXT_PUBLIC_CREW_HOST,
   TED_INTAKE_TOKEN: process.env.TED_INTAKE_TOKEN,
 };
 
@@ -38,6 +41,24 @@ describe("hosts", () => {
     );
     expect(normalizeHost("[::1]:3000")).toBe("[::1]");
     expect(normalizeHost(null)).toBe("");
+    expect(
+      requestHost({
+        get: (name) =>
+          name === "x-forwarded-host"
+            ? "ted-837461.harrywetherall.com, vercel.app"
+            : "ignored.example",
+      }),
+    ).toBe("ted-837461.harrywetherall.com");
+  });
+
+  it("falls back to NEXT_PUBLIC host env vars", () => {
+    delete process.env.TED_HOST;
+    delete process.env.CREW_HOST;
+    process.env.NEXT_PUBLIC_TED_HOST = "ted-837461.harrywetherall.com";
+    process.env.NEXT_PUBLIC_CREW_HOST = "stag-482719.harrywetherall.com";
+    expect(tedHost()).toBe("ted-837461.harrywetherall.com");
+    expect(crewHost()).toBe("stag-482719.harrywetherall.com");
+    expect(hostIsolationEnabled()).toBe(true);
   });
 
   it("detects local hosts", () => {
