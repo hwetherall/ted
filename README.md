@@ -79,8 +79,19 @@ Configure these Supabase Auth redirect URLs before testing groomsman magic links
 
 ```text
 http://localhost:3000/admin/auth/callback
-https://your-production-domain.example/admin/auth/callback
+https://stag-482719.harrywetherall.com/admin/auth/callback
 ```
+
+Production uses two hosts on the same Vercel project. Set `CREW_HOST`, `TED_HOST`, and `NEXT_PUBLIC_SITE_URL` (crew origin). Middleware keeps Ted's host on the team sheet only and blocks `/ted` on the crew host.
+
+Add both subdomains in Vercel, then create these DNS records at `harrywetherall.com` (CNAME name → Vercel target from `vercel domains verify`):
+
+```text
+stag-482719  CNAME  ffbe9a383a038022.vercel-dns-017.com.
+ted-837461   CNAME  ffbe9a383a038022.vercel-dns-017.com.
+```
+
+If the apex still uses parking nameservers (`dns-parking.com`), move DNS to a provider you control first, or point nameservers at Vercel (`ns1.vercel-dns.com` / `ns2.vercel-dns.com`) and manage records there.
 
 Start the app:
 
