@@ -9,4 +9,5 @@ playwright-report
 test-results
 *.tsbuildinfo
 .vercel
-images/
+images/*
+!images/lads.jpg
