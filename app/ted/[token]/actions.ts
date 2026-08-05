@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { text, nullableText } from "@/lib/forms";
+import { toE164 } from "@/lib/phone";
 import { addTedTeamSheetEntry, updateTedTeamSheetEntry } from "@/lib/ted/team-sheet";
 
 const submission = z.object({
   full_name: z.string().min(2).max(120),
   email: z.union([z.email().max(320), z.literal("")]),
-  phone: z.string().max(40),
+  phone: z.string().max(20),
   nickname: z.string().min(1).max(80),
   note: z.string().max(1000),
 });
@@ -21,10 +22,12 @@ export type TeamSheetActionState = {
 };
 
 function entryFrom(formData: FormData) {
+  const phone = toE164(text(formData, "country_code"), text(formData, "phone")) ?? "";
+
   const parsed = submission.safeParse({
     full_name: text(formData, "full_name"),
     email: text(formData, "email"),
-    phone: text(formData, "phone"),
+    phone,
     nickname: text(formData, "nickname"),
     note: text(formData, "note"),
   });
@@ -34,7 +37,7 @@ function entryFrom(formData: FormData) {
   return {
     ...parsed.data,
     email: nullableText(formData, "email"),
-    phone: nullableText(formData, "phone"),
+    phone: phone || null,
     note: nullableText(formData, "note"),
   };
 }

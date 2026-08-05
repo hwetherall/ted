@@ -7,6 +7,11 @@ import {
   updateTedNameAction,
   type TeamSheetActionState,
 } from "@/app/ted/[token]/actions";
+import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  PHONE_COUNTRY_CODES,
+  splitE164,
+} from "@/lib/phone";
 import type { TeamSheetEntry } from "@/lib/ted/team-sheet";
 
 const initialState: TeamSheetActionState = { status: "idle", message: "" };
@@ -17,6 +22,40 @@ function PendingButton({ idle, pending }: { idle: string; pending: string }) {
     <button className="button button-primary justify-self-start" disabled={isPending}>
       {isPending ? pending : idle}
     </button>
+  );
+}
+
+function MobileField({ defaultPhone }: { defaultPhone?: string | null }) {
+  const { countryCode, nationalNumber } = splitE164(defaultPhone);
+
+  return (
+    <label className="label">
+      Mobile
+      <span className="grid grid-cols-[minmax(7.5rem,9rem)_minmax(0,1fr)] gap-2">
+        <select
+          className="field text-base font-normal"
+          name="country_code"
+          defaultValue={countryCode || DEFAULT_PHONE_COUNTRY_CODE}
+          aria-label="Country code"
+        >
+          {PHONE_COUNTRY_CODES.map((entry) => (
+            <option key={entry.code} value={entry.code}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
+        <input
+          className="field text-base font-normal"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          maxLength={20}
+          autoComplete="off"
+          placeholder="0412 345 678"
+          defaultValue={nationalNumber}
+        />
+      </span>
+    </label>
   );
 }
 
@@ -60,7 +99,7 @@ function AddPersonForm({ token }: { token: string }) {
           <legend className="label text-base">How can we reach them?</legend>
           <p className="text-xs text-[var(--chalk-muted)]">One is plenty. Don&apos;t go hunting for both.</p>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="label">Mobile<input className="field text-base font-normal" name="phone" type="tel" maxLength={40} autoComplete="off" /></label>
+            <MobileField />
             <label className="label">Email<input className="field text-base font-normal" name="email" type="email" maxLength={320} autoComplete="off" /></label>
           </div>
         </fieldset>
@@ -91,7 +130,7 @@ function EditPersonForm({ token, entry }: { token: string; entry: TeamSheetEntry
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="label">Full name<input className="field text-base font-normal" name="full_name" required maxLength={120} defaultValue={entry.full_name} /></label>
         <label className="label">Nickname<input className="field text-base font-normal" name="nickname" required maxLength={80} defaultValue={entry.nickname} /></label>
-        <label className="label">Mobile<input className="field text-base font-normal" name="phone" type="tel" maxLength={40} defaultValue={entry.phone || ""} /></label>
+        <MobileField defaultPhone={entry.phone} />
         <label className="label">Email<input className="field text-base font-normal" name="email" type="email" maxLength={320} defaultValue={entry.email || ""} /></label>
       </div>
       <label className="label">Anything worth knowing?<textarea className="field min-h-24 resize-y text-base font-normal" name="note" maxLength={1000} defaultValue={entry.note || ""} /></label>
